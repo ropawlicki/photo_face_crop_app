@@ -17,26 +17,22 @@ class VipsCroppingService(CroppingService):
         return True
 
     @property
-    def image(self):
-        if not hasattr(self, "_image"):
-            image_bytes = self._image_stream.read()
-            self._image = pyvips.Image.new_from_buffer(image_bytes, "")
-        return self._image
-
-    @property
     def cropped_image_stream(self) -> IO[bytes]:
         if self._cropped_image_stream is None:
             raise ValueError("Cropped image stream is not set. Call _convert_image_to_stream() first.")
         return self._cropped_image_stream
 
+    def _get_image(self):
+        if not hasattr(self, "_image"):
+            image_bytes = self._image_stream.read()
+            self._image = pyvips.Image.new_from_buffer(image_bytes, "")
+        return self._image
+
     def _crop_image(self, scale: float) -> pyvips.Image:
-        new_width = int(self.image.width * scale)
-        new_height = int(self.image.height * scale)
+        new_width = int(self._get_image().width * scale)
+        new_height = int(self._get_image().height * scale)
 
-        left = (self.image.width - new_width) // 2
-        top = (self.image.height - new_height) // 2
-
-        self._cropped_image = self.image.crop(left, top, new_width, new_height)
+        self._cropped_image = self._get_image().smartcrop(new_width, new_height)
         return self._cropped_image
 
     def _convert_image_to_stream(self) -> IO[bytes]:

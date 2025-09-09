@@ -1,6 +1,7 @@
 # mypy: disable-error-code=misc
 
 from flask import Blueprint, request, Response
+from typing import Tuple
 from werkzeug.datastructures import MultiDict, FileStorage
 from app.controllers.photos_actions import crop_photos
 
@@ -14,6 +15,6 @@ def healthcheck() -> tuple[str, int]:
 
 
 @photos.route("/crop", methods=["POST"])
-def crop_photos_route() -> Response:
+def crop_photos_route() -> Tuple[Response, int]:
     files: MultiDict[str, FileStorage] = request.files
     return crop_photos(files)

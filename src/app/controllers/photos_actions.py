@@ -1,20 +1,26 @@
-from flask import send_file, Response
+from flask import send_file, jsonify, Response, request
+from typing import Tuple
 from werkzeug.datastructures import MultiDict, FileStorage
 from app.services.photos_processing_service import PhotosProcessingService
 from app.services.zip_files_service import ZipFilesService
 
 
-def crop_photos(files: MultiDict[str, FileStorage]) -> Response:
-    processing_service = PhotosProcessingService(files)
-    processing_service()
-    processed_files = processing_service.processed_files
+def crop_photos(files: MultiDict[str, FileStorage]) -> Tuple[Response, int]:
+    try:
+        crop_method = request.form.get("crop_method") or "vips"
 
-    zip_service = ZipFilesService(processed_files)
-    zip_buffer = zip_service()
+        processing_service = PhotosProcessingService(files, crop_method)
+        processing_service()
+        processed_files = processing_service.processed_files
 
-    return send_file(
-        zip_buffer,
-        mimetype="application/zip",
-        as_attachment=True,
-        download_name="cropped_photos.zip",
-    )
+        zip_service = ZipFilesService(processed_files)
+        zip_buffer = zip_service()
+
+        return send_file(
+            zip_buffer,
+            mimetype="application/zip",
+            as_attachment=True,
+            download_name="cropped_photos.zip",
+        ), 201
+    except PhotosProcessingService.ValueError as e:
+        return jsonify({"error": str(e)}), 422

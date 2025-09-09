@@ -6,9 +6,18 @@ from werkzeug.datastructures import FileStorage, MultiDict
 
 
 class PhotosProcessingService:
-    def __init__(self, files: MultiDict[str, FileStorage]):
+    CROP_SERVICES = {"vips": VipsCroppingService}
+
+    class ServiceError(Exception):
+        pass
+
+    class ValueError(ServiceError):
+        pass
+
+    def __init__(self, files: MultiDict[str, FileStorage], crop_method: str):
         self.files: MultiDict[str, FileStorage] = files
         self.processed_files: List[ProcessedFileDict] = []
+        self.crop_method: str = crop_method
 
     def __call__(self) -> None:
         for key, files in self.files.lists():
@@ -22,4 +31,7 @@ class PhotosProcessingService:
                 self.processed_files.append(file_dict)
 
     def _initialize_cropping_service(self, file) -> CroppingService:
-        return VipsCroppingService(file)
+        service_cls = self.CROP_SERVICES.get(self.crop_method)
+        if not service_cls:
+            raise self.ValueError(f"No cropping service for method: {self.crop_method}")
+        return service_cls(file)

@@ -6,7 +6,7 @@ from werkzeug.datastructures import FileStorage, MultiDict
 
 
 class PhotosProcessingService:
-    AVAILABLE_CROP_METHODS = ("vips",)
+    CROP_SERVICES = {"vips": VipsCroppingService}
 
     class ServiceError(Exception):
         pass
@@ -18,7 +18,6 @@ class PhotosProcessingService:
         self.files: MultiDict[str, FileStorage] = files
         self.processed_files: List[ProcessedFileDict] = []
         self.crop_method: str = crop_method
-        self._verify_crop_method()
 
     def __call__(self) -> None:
         for key, files in self.files.lists():
@@ -31,12 +30,8 @@ class PhotosProcessingService:
                 }
                 self.processed_files.append(file_dict)
 
-    def _verify_crop_method(self) -> None:
-        if self.crop_method not in self.AVAILABLE_CROP_METHODS:
-            raise self.ValueError(
-                f"Unknown crop method: {self.crop_method}. Available: {', '.join(str(m) for m in self.AVAILABLE_CROP_METHODS)}"
-            )
-
     def _initialize_cropping_service(self, file) -> CroppingService:
-        if self.crop_method == "vips":
-            return VipsCroppingService(file)
+        service_cls = self.CROP_SERVICES.get(self.crop_method)
+        if not service_cls:
+            raise self.ValueError(f"No cropping service for method: {self.crop_method}")
+        return service_cls(file)
